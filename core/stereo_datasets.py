@@ -279,9 +279,37 @@ class Middlebury(StereoDataset):
                 self.image_list += [ [img1, img2] ]
                 self.disparity_list += [ disp ]
 
+
+class OSU(StereoDataset):
+    def __init__(self, aug_params=None, root='datasets/OSU', image_set='training'):
+        super(OSU, self).__init__(aug_params, sparse=True, reader=frame_utils.readDispKITTI)
+        assert os.path.exists(root)
+
+        image1_list = glob(os.path.join(root, 'cam3_img/*.png'))
+        image2_list = glob(os.path.join(root, 'cam2_img/*.png'))
+        disp_list = glob(os.path.join(root, 'disp/*.png'))
+
+        for idx, (img1, img2, disp) in enumerate(zip(image1_list, image2_list, disp_list)):
+            self.image_list += [ [img1, img2] ]
+            self.disparity_list += [ disp ]
+
+
+class Argoverse(StereoDataset):
+    def __init__(self, aug_params=None, root='datasets/argoverse', split='training'):
+        super(Argoverse, self).__init__(aug_params, sparse=True, reader=frame_utils.readDispArgoverse)
+
+        sub = 'train' if split == 'training' else 'val'
+        image1_list = sorted( glob(osp.join(root, f'rectified_stereo_images_v1.1/{sub}/*/stereo_front_left_rect/*.jpg')) )
+        image2_list = sorted( glob(osp.join(root, f'rectified_stereo_images_v1.1/{sub}/*/stereo_front_right_rect/*.jpg')) )
+        disp_list = sorted( glob(osp.join(root, f'disparity_maps_v1.1/{sub}/*/stereo_front_left_rect_disparity/*.png')) )
+
+        for img1, img2, disp in zip(image1_list, image2_list, disp_list):
+            self.image_list += [ [img1, img2] ]
+            self.disparity_list += [ disp ]
+
   
 def fetch_dataloader(args):
-    """ Create the data loader for the corresponding trainign set """
+    """ Create the data loader for the corresponding training set """
 
     aug_params = {'crop_size': args.image_size, 'min_scale': args.spatial_scale[0], 'max_scale': args.spatial_scale[1], 'do_flip': False, 'yjitter': not args.noyjitter}
     if hasattr(args, "saturation_range") and args.saturation_range is not None:
@@ -312,6 +340,12 @@ def fetch_dataloader(args):
         elif dataset_name.startswith('tartan_air'):
             new_dataset = TartanAir(aug_params, keywords=dataset_name.split('_')[2:])
             logging.info(f"Adding {len(new_dataset)} samples from Tartain Air")
+        elif dataset_name.startswith('osu'):
+            new_dataset = OSU(aug_params)
+            logging.info(f"Adding {len(new_dataset)} samples from OSU")
+        elif dataset_name.startswith('argoverse'):
+            new_dataset = Argoverse(aug_params)
+            logging.info(f"Adding {len(new_dataset)} samples from Argoverse")
         train_dataset = new_dataset if train_dataset is None else train_dataset + new_dataset
 
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, 

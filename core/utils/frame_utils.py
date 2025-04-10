@@ -152,7 +152,6 @@ def readDispTartanAir(file_name):
     valid = disp > 0
     return disp, valid
 
-
 def readDispMiddlebury(file_name):
     if basename(file_name) == 'disp0GT.pfm':
         disp = readPFM(file_name).astype(np.float32)
@@ -166,6 +165,13 @@ def readDispMiddlebury(file_name):
         disp = readPFM(file_name).astype(np.float32)
         valid = disp < 1e3
         return disp, valid
+
+# Method taken from https://github.com/argoverse/argoverse-api/blob/master/argoverse/data_loading/stereo_dataloader.py
+def readDispArgoverse(file_name):
+    disp = cv2.imread(file_name, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+    valid = disp > 0.0
+    return np.float32(disp) / 256, valid
+
 
 def writeFlowKITTI(filename, uv):
     uv = 64.0 * uv + 2**15
