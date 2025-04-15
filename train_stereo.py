@@ -5,6 +5,8 @@ import logging
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
+import os
+import json
 
 from torch.utils.tensorboard import SummaryWriter
 import torch
@@ -150,9 +152,13 @@ def train(args):
     model.train()
     model.module.freeze_bn() # We keep BatchNorm frozen
 
-    validation_frequency = 10000
+    # validation_frequency = 10000
+    validation_frequency = args.num_steps // 10
 
     scaler = GradScaler(enabled=args.mixed_precision)
+
+    train_log = []
+    val_log = []
 
     should_keep_training = True
     global_batch_num = 0
@@ -180,17 +186,30 @@ def train(args):
 
             logger.push(metrics)
 
+            # record loss and metrics at each step
+            train_log.append({
+                'step': total_steps,
+                'loss': loss.item(),
+                **metrics
+            })
+
             if total_steps % validation_frequency == validation_frequency - 1:
                 save_path = Path('checkpoints/%d_%s.pth' % (total_steps + 1, args.name))
                 logging.info(f"Saving file {save_path.absolute()}")
                 torch.save(model.state_dict(), save_path)
 
-                results = validate_things(model.module, iters=args.valid_iters)
+                results = validate_argoverse(model.module, iters=args.valid_iters)
 
                 logger.write_dict(results)
 
                 model.train()
                 model.module.freeze_bn()
+
+                # record each validation result
+                val_log.append({
+                    'step': total_steps,
+                    **results
+                })
 
             total_steps += 1
 
@@ -207,6 +226,16 @@ def train(args):
     logger.close()
     PATH = 'checkpoints/%s.pth' % args.name
     torch.save(model.state_dict(), PATH)
+
+    os.makedirs(f'logs/{args.name}', exist_ok=True)
+    train_log_path = f'logs/{args.name}/train_log.json'
+    val_log_path = f'logs/{args.name}/val_log.json'
+
+    with open(train_log_path, 'w') as f:
+        json.dump(train_log, f, indent=2)
+
+    with open(val_log_path, 'w') as f:
+        json.dump(val_log, f, indent=2)
 
     return PATH
 
