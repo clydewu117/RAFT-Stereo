@@ -282,7 +282,7 @@ class Middlebury(StereoDataset):
 
 class OSU(StereoDataset):
     def __init__(self, aug_params=None, root='datasets/OSU', image_set='training'):
-        super(OSU, self).__init__(aug_params, sparse=True, reader=frame_utils.readDispKITTI)
+        super(OSU, self).__init__(aug_params, sparse=True, reader=frame_utils.readDispOSU)
         assert os.path.exists(root)
 
         image1_list = glob(os.path.join(root, 'cam3_img/*.png'))

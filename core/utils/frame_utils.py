@@ -166,6 +166,11 @@ def readDispMiddlebury(file_name):
         valid = disp < 1e3
         return disp, valid
 
+def readDispOSU(file_name):
+    disp = cv2.imread(file_name, cv2.IMREAD_UNCHANGED).astype(np.float32)
+    valid = disp > 0.0
+    return disp / 65535 * 1000, valid
+
 # Method taken from https://github.com/argoverse/argoverse-api/blob/master/argoverse/data_loading/stereo_dataloader.py
 def readDispArgoverse(file_name):
     disp = cv2.imread(file_name, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
