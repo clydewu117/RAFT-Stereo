@@ -7,6 +7,7 @@ from pathlib import Path
 from tqdm import tqdm
 import os
 import json
+import wandb
 
 from torch.utils.tensorboard import SummaryWriter
 import torch
@@ -136,6 +137,12 @@ def train(args):
     model = nn.DataParallel(RAFTStereo(args))
     print("Parameter Count: %d" % count_parameters(model))
 
+    wandb.init(
+        project="raft-stereo",
+        name=args.name,
+        config=vars(args),
+    )
+
     train_loader = datasets.fetch_dataloader(args)
     optimizer, scheduler = fetch_optimizer(args, model)
     total_steps = 0
@@ -191,6 +198,12 @@ def train(args):
                 'step': total_steps,
                 'loss': loss.item(),
                 **metrics
+            })
+
+            wandb.log({
+                'step': total_steps,
+                'loss': loss.item(),
+                **metrics,
             })
 
             if total_steps % validation_frequency == validation_frequency - 1:
