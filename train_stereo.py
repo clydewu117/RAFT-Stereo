@@ -201,7 +201,6 @@ def train(args):
             })
 
             wandb.log({
-                'step': total_steps,
                 'loss': loss.item(),
                 **metrics,
             })
@@ -236,6 +235,7 @@ def train(args):
             torch.save(model.state_dict(), save_path)
 
     print("FINISHED TRAINING")
+    wandb.finish()
     logger.close()
     PATH = 'checkpoints/%s.pth' % args.name
     torch.save(model.state_dict(), PATH)
