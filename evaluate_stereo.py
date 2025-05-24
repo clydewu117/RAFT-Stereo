@@ -249,7 +249,7 @@ def validate_argoverse(model, iters=32, mixed_prec=False):
     val_dataset = datasets.Argoverse(aug_params, split='val')
     torch.backends.cudnn.benchmark = True
 
-    out_list, epe_list, elapsed_list = [], [], []
+    out_list_1px, out_list_3px, out_list_5px, epe_list, elapsed_list = [], [], [], [], []
     for val_id in range(len(val_dataset)):
         _, image1, image2, flow_gt, valid_gt = val_dataset[val_id]
         image1 = image1[None].cuda()
@@ -273,24 +273,34 @@ def validate_argoverse(model, iters=32, mixed_prec=False):
         epe_flattened = epe.flatten()
         val = valid_gt.flatten() >= 0.5
 
-        out = (epe_flattened > 3.0)
-        image_out = out[val].float().mean().item()
+        out_1px = (epe_flattened > 1.0)
+        out_3px = (epe_flattened > 3.0)
+        out_5px = (epe_flattened > 5.0)
+        image_out_1px = out_1px[val].float().mean().item()
+        image_out_3px = out_3px[val].float().mean().item()
+        image_out_5px = out_5px[val].float().mean().item()
         image_epe = epe_flattened[val].mean().item()
         if val_id < 9 or (val_id+1)%10 == 0:
-            logging.info(f"Argoverse Iter {val_id+1} out of {len(val_dataset)}. EPE {round(image_epe,4)} D1 {round(image_out,4)}. Runtime: {format(end-start, '.3f')}s ({format(1/(end-start), '.2f')}-FPS)")
+            logging.info(f"Argoverse Iter {val_id+1} out of {len(val_dataset)}. EPE {round(image_epe,4)} D1_1px {round(image_out_1px,4)} D1_3px {round(image_out_3px,4)} D1_5px {round(image_out_5px,4)}. Runtime: {format(end-start, '.3f')}s ({format(1/(end-start), '.2f')}-FPS)")
         epe_list.append(epe_flattened[val].mean().item())
-        out_list.append(out[val].cpu().numpy())
+        out_list_1px.append(out_1px[val].cpu().numpy())
+        out_list_3px.append(out_3px[val].cpu().numpy())
+        out_list_5px.append(out_5px[val].cpu().numpy())
 
     epe_list = np.array(epe_list)
-    out_list = np.concatenate(out_list)
+    out_list_1px = np.concatenate(out_list_1px)
+    out_list_3px = np.concatenate(out_list_3px)
+    out_list_5px = np.concatenate(out_list_5px)
 
     epe = np.mean(epe_list)
-    d1 = 100 * np.mean(out_list)
+    d1_1px = 100 * np.mean(out_list_1px)
+    d1_3px = 100 * np.mean(out_list_3px)
+    d1_5px = 100 * np.mean(out_list_5px)
 
     avg_runtime = np.mean(elapsed_list)
 
-    print(f"Validation Argoverse: EPE {epe}, D1 {d1}, {format(1/avg_runtime, '.2f')}-FPS ({format(avg_runtime, '.3f')}s)")
-    return {'Argoverse-epe': epe, 'Argoverse-d1': d1}
+    print(f"Validation Argoverse: EPE {epe}, D1_1px {d1_1px}, D1_3px {d1_3px}, D1_5px {d1_5px}, {format(1/avg_runtime, '.2f')}-FPS ({format(avg_runtime, '.3f')}s)")
+    return {'argoverse-epe': epe, 'argoverse-d1_1px': d1_1px, 'argoverse-d1_3px': d1_3px, 'argoverse-d1_5px': d1_5px}
 
 
 if __name__ == '__main__':

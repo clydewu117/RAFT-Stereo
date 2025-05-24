@@ -64,9 +64,9 @@ def sequence_loss(flow_preds, flow_gt, valid, loss_gamma=0.9, max_flow=700):
 
     metrics = {
         'epe': epe.mean().item(),
-        '1px': (epe < 1).float().mean().item(),
-        '3px': (epe < 3).float().mean().item(),
-        '5px': (epe < 5).float().mean().item(),
+        '1px': (epe > 1).float().mean().item(),
+        '3px': (epe > 3).float().mean().item(),
+        '5px': (epe > 5).float().mean().item(),
     }
 
     return flow_loss, metrics
@@ -210,9 +210,9 @@ def train(args):
                 logging.info(f"Saving file {save_path.absolute()}")
                 torch.save(model.state_dict(), save_path)
 
-                results = validate_argoverse(model.module, iters=args.valid_iters)
+                val_results = validate_argoverse(model.module, iters=args.valid_iters)
 
-                logger.write_dict(results)
+                logger.write_dict(val_results)
 
                 model.train()
                 model.module.freeze_bn()
@@ -220,7 +220,11 @@ def train(args):
                 # record each validation result
                 val_log.append({
                     'step': total_steps,
-                    **results
+                    **val_results
+                })
+
+                wandb.log({
+                    **val_results,
                 })
 
             total_steps += 1
