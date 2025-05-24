@@ -51,7 +51,11 @@ def sequence_loss(flow_preds, flow_gt, valid, loss_gamma=0.9, max_flow=700):
     assert not torch.isinf(flow_gt[valid.bool()]).any()
 
     for i in range(n_predictions):
-        assert not torch.isnan(flow_preds[i]).any() and not torch.isinf(flow_preds[i]).any()
+        # assert not torch.isnan(flow_preds[i]).any() and not torch.isinf(flow_preds[i]).any()
+        # if nan or inf, return None and skip training step
+        if torch.isnan(flow_preds[i]).any() or torch.isinf(flow_preds[i]).any():
+            return None, None
+
         # We adjust the loss_gamma so it is consistent for any number of RAFT-Stereo iterations
         adjusted_loss_gamma = loss_gamma**(15/(n_predictions - 1))
         i_weight = adjusted_loss_gamma**(n_predictions - i - 1)
@@ -180,6 +184,10 @@ def train(args):
             assert model.training
 
             loss, metrics = sequence_loss(flow_predictions, flow, valid)
+
+            if loss is None and metrics is None:
+                continue
+
             logger.writer.add_scalar("live_loss", loss.item(), global_batch_num)
             logger.writer.add_scalar(f'learning_rate', optimizer.param_groups[0]['lr'], global_batch_num)
             global_batch_num += 1
