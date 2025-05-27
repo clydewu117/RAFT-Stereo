@@ -218,7 +218,7 @@ def train(args):
                 logging.info(f"Saving file {save_path.absolute()}")
                 torch.save(model.state_dict(), save_path)
 
-                val_results = validate_argoverse(model.module, iters=args.valid_iters)
+                val_results = validate_osu(model.module, iters=args.valid_iters)
 
                 logger.write_dict(val_results)
 

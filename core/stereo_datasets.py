@@ -285,9 +285,16 @@ class OSU(StereoDataset):
         super(OSU, self).__init__(aug_params, sparse=True, reader=frame_utils.readDispOSU)
         assert os.path.exists(root)
 
-        image1_list = glob(os.path.join(root, 'cam3_img/*.png'))
-        image2_list = glob(os.path.join(root, 'cam2_img/*.png'))
-        disp_list = glob(os.path.join(root, 'disp/*.png'))
+        if image_set == 'training':
+            sub = 'train'
+        elif image_set == 'validation':
+            sub = 'val'
+        else:
+            sub = 'test'
+
+        image1_list = glob(os.path.join(root, sub, 'cam3_img/*.png'))
+        image2_list = glob(os.path.join(root, sub, 'cam2_img/*.png'))
+        disp_list = glob(os.path.join(root, sub, 'disp/*.png'))
 
         for idx, (img1, img2, disp) in enumerate(zip(image1_list, image2_list, disp_list)):
             self.image_list += [ [img1, img2] ]

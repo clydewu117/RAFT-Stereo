@@ -189,15 +189,68 @@ def validate_middlebury(model, iters=32, split='F', mixed_prec=False):
     return {f'middlebury{split}-epe': epe, f'middlebury{split}-d1': d1}
 
 
+# @torch.no_grad()
+# def validate_osu(model, iters=32, mixed_prec=False):
+#     """ Peform validation using the OSU dataset """
+#     model.eval()
+#     aug_params = {}
+#     val_dataset = datasets.OSU(aug_params, image_set='val')
+#     torch.backends.cudnn.benchmark = True
+#
+#     out_list, epe_list, elapsed_list = [], [], []
+#     for val_id in range(len(val_dataset)):
+#         _, image1, image2, flow_gt, valid_gt = val_dataset[val_id]
+#         image1 = image1[None].cuda()
+#         image2 = image2[None].cuda()
+#
+#         padder = InputPadder(image1.shape, divis_by=32)
+#         image1, image2 = padder.pad(image1, image2)
+#
+#         with autocast(enabled=mixed_prec):
+#             start = time.time()
+#             _, flow_pr = model(image1, image2, iters=iters, test_mode=True)
+#             end = time.time()
+#
+#         if val_id > 50:
+#             elapsed_list.append(end-start)
+#         flow_pr = padder.unpad(flow_pr).cpu().squeeze(0)
+#
+#         assert flow_pr.shape == flow_gt.shape, (flow_pr.shape, flow_gt.shape)
+#         epe = torch.sum((flow_pr - flow_gt)**2, dim=0).sqrt()
+#
+#         epe_flattened = epe.flatten()
+#         val = valid_gt.flatten() >= 0.5
+#
+#         out = (epe_flattened > 3.0)
+#         image_out = out[val].float().mean().item()
+#         image_epe = epe_flattened[val].mean().item()
+#         if val_id < 9 or (val_id+1)%10 == 0:
+#             logging.info(f"OSU Iter {val_id+1} out of {len(val_dataset)}. EPE {round(image_epe,4)} D1 {round(image_out,4)}. Runtime: {format(end-start, '.3f')}s ({format(1/(end-start), '.2f')}-FPS)")
+#         epe_list.append(epe_flattened[val].mean().item())
+#         out_list.append(out[val].cpu().numpy())
+#
+#     epe_list = np.array(epe_list)
+#     out_list = np.concatenate(out_list)
+#
+#     epe = np.mean(epe_list)
+#     d1 = 100 * np.mean(out_list)
+#
+#     avg_runtime = np.mean(elapsed_list)
+#
+#     print(f"Validation OSU: EPE {epe}, D1 {d1}, {format(1/avg_runtime, '.2f')}-FPS ({format(avg_runtime, '.3f')}s)")
+#     return {'osu-epe': epe, 'osu-d1': d1}
+
+
 @torch.no_grad()
 def validate_osu(model, iters=32, mixed_prec=False):
-    """ Peform validation using the OSU dataset """
+    """ Perform validation using the OSU dataset """
     model.eval()
     aug_params = {}
-    val_dataset = datasets.OSU(aug_params, image_set='training')
+    val_dataset = datasets.OSU(aug_params, image_set='validation')
     torch.backends.cudnn.benchmark = True
 
-    out_list, epe_list, elapsed_list = [], [], []
+    out_list_1px, out_list_3px, out_list_5px, epe_list, elapsed_list = [], [], [], [], []
+
     for val_id in range(len(val_dataset)):
         _, image1, image2, flow_gt, valid_gt = val_dataset[val_id]
         image1 = image1[None].cuda()
@@ -212,33 +265,56 @@ def validate_osu(model, iters=32, mixed_prec=False):
             end = time.time()
 
         if val_id > 50:
-            elapsed_list.append(end-start)
+            elapsed_list.append(end - start)
         flow_pr = padder.unpad(flow_pr).cpu().squeeze(0)
 
         assert flow_pr.shape == flow_gt.shape, (flow_pr.shape, flow_gt.shape)
-        epe = torch.sum((flow_pr - flow_gt)**2, dim=0).sqrt()
 
-        epe_flattened = epe.flatten()
-        val = valid_gt.flatten() >= 0.5
+        epe = torch.norm(flow_pr - flow_gt, dim=0)  # (H, W)
+        epe_flat = epe.flatten()
+        valid = valid_gt.flatten() >= 0.5
 
-        out = (epe_flattened > 3.0)
-        image_out = out[val].float().mean().item()
-        image_epe = epe_flattened[val].mean().item()
-        if val_id < 9 or (val_id+1)%10 == 0:
-            logging.info(f"OSU Iter {val_id+1} out of {len(val_dataset)}. EPE {round(image_epe,4)} D1 {round(image_out,4)}. Runtime: {format(end-start, '.3f')}s ({format(1/(end-start), '.2f')}-FPS)")
-        epe_list.append(epe_flattened[val].mean().item())
-        out_list.append(out[val].cpu().numpy())
+        out_1px = epe_flat > 1.0
+        out_3px = epe_flat > 3.0
+        out_5px = epe_flat > 5.0
+
+        image_epe = epe_flat[valid].mean().item()
+        image_out_1px = out_1px[valid].float().mean().item()
+        image_out_3px = out_3px[valid].float().mean().item()
+        image_out_5px = out_5px[valid].float().mean().item()
+
+        if val_id < 9 or (val_id + 1) % 10 == 0:
+            logging.info(f"OSU Iter {val_id + 1} / {len(val_dataset)} | "
+                         f"EPE: {image_epe:.4f} | "
+                         f"D1_1px: {image_out_1px:.4f} | D1_3px: {image_out_3px:.4f} | D1_5px: {image_out_5px:.4f} | "
+                         f"Time: {end - start:.3f}s ({1 / (end - start):.2f} FPS)")
+
+        epe_list.append(image_epe)
+        out_list_1px.append(out_1px[valid].cpu().numpy())
+        out_list_3px.append(out_3px[valid].cpu().numpy())
+        out_list_5px.append(out_5px[valid].cpu().numpy())
 
     epe_list = np.array(epe_list)
-    out_list = np.concatenate(out_list)
+    out_list_1px = np.concatenate(out_list_1px)
+    out_list_3px = np.concatenate(out_list_3px)
+    out_list_5px = np.concatenate(out_list_5px)
 
     epe = np.mean(epe_list)
-    d1 = 100 * np.mean(out_list)
-
+    d1_1px = 100 * np.mean(out_list_1px)
+    d1_3px = 100 * np.mean(out_list_3px)
+    d1_5px = 100 * np.mean(out_list_5px)
     avg_runtime = np.mean(elapsed_list)
 
-    print(f"Validation OSU: EPE {epe}, D1 {d1}, {format(1/avg_runtime, '.2f')}-FPS ({format(avg_runtime, '.3f')}s)")
-    return {'osu-epe': epe, 'osu-d1': d1}
+    print(f"Validation OSU: "
+          f"EPE {epe:.4f}, D1_1px {d1_1px:.2f}%, D1_3px {d1_3px:.2f}%, D1_5px {d1_5px:.2f}%, "
+          f"{1 / avg_runtime:.2f} FPS ({avg_runtime:.3f}s)")
+
+    return {
+        'osu-epe': epe,
+        'osu-d1_1px': d1_1px,
+        'osu-d1_3px': d1_3px,
+        'osu-d1_5px': d1_5px
+    }
 
 
 @torch.no_grad()
