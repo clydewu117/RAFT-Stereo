@@ -451,6 +451,9 @@ if __name__ == '__main__':
     elif args.dataset == 'kitti':
         validate_kitti(model, iters=args.valid_iters, mixed_prec=use_mixed_precision)
 
+    elif args.dataset == 'kitti_mono':
+        validate_kitti_mono(model, iters=args.valid_iters, mixed_prec=use_mixed_precision)
+
     elif args.dataset in [f"middlebury_{s}" for s in 'FHQ']:
         validate_middlebury(model, iters=args.valid_iters, split=args.dataset[-1], mixed_prec=use_mixed_precision)
 

@@ -272,7 +272,7 @@ class KITTI_completion(StereoDataset):
         for seq in sorted(use_seqs):
             seq_name = seq.split('/')[-1]
             disp_list_tmp = sorted(
-                glob(os.path.join(root, f'{split}/{seq_name}/proj_depth/groundtruth/image_02/*.png')))  # gt
+                glob(os.path.join(root, f'{split}/{seq_name}/*/groundtruth/image_02/*.png')))  # gt
             disp_list += disp_list_tmp
 
         image1_list, image2_list = [], []
@@ -313,7 +313,6 @@ class KITTI_completion(StereoDataset):
                 self.image_list += [[img1, img2]]
                 self.disparity_list += [disp]
 
-        print(f"[{self.__class__.__name__}] Found {len(self)} samples in {root}")
 
 class Middlebury(StereoDataset):
     def __init__(self, aug_params=None, root='datasets/Middlebury', split='F'):
@@ -398,7 +397,7 @@ def fetch_dataloader(args):
             logging.info(f"Adding {len(new_dataset)} samples from KITTI")
         elif dataset_name == 'kitti_mono':
             new_dataset = KITTI_completion(aug_params)
-            logging.info(f"Adding {len(new_dataset)} samples from KITTI")
+            logging.info(f"Adding {len(new_dataset)} samples from KITTI mono")
         elif dataset_name == 'sintel_stereo':
             new_dataset = SintelStereo(aug_params)*140
             logging.info(f"Adding {len(new_dataset)} samples from Sintel Stereo")
