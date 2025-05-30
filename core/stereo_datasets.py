@@ -313,6 +313,8 @@ class KITTI_completion(StereoDataset):
                 self.image_list += [[img1, img2]]
                 self.disparity_list += [disp]
 
+        print(f"[{self.__class__.__name__}] Found {len(self)} samples in {root}")
+
 class Middlebury(StereoDataset):
     def __init__(self, aug_params=None, root='datasets/Middlebury', split='F'):
         super(Middlebury, self).__init__(aug_params, sparse=True, reader=frame_utils.readDispMiddlebury)
