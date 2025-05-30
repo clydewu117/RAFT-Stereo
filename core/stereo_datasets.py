@@ -272,7 +272,7 @@ class KITTI_completion(StereoDataset):
         for seq in sorted(use_seqs):
             seq_name = seq.split('/')[-1]
             disp_list_tmp = sorted(
-                glob(os.path.join(root, f'{split}/{seq_name}/*/groundtruth/image_02/*.png')))  # gt
+                glob(os.path.join(root, f'{split}/{seq_name}/proj_depth/groundtruth/image_02/*.png')))  # gt
             disp_list += disp_list_tmp
 
         image1_list, image2_list = [], []
