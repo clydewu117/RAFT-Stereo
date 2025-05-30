@@ -392,10 +392,10 @@ def fetch_dataloader(args):
             new_dataset = (clean_dataset*4) + (final_dataset*4)
             logging.info(f"Adding {len(new_dataset)} samples from SceneFlow")
         elif dataset_name == 'kitti':
-            new_dataset = KITTI(aug_params, split=dataset_name)
+            new_dataset = KITTI(aug_params)
             logging.info(f"Adding {len(new_dataset)} samples from KITTI")
         elif dataset_name == 'kitti_mono':
-            new_dataset = KITTI_completion(aug_params, split=dataset_name)
+            new_dataset = KITTI_completion(aug_params)
             logging.info(f"Adding {len(new_dataset)} samples from KITTI")
         elif dataset_name == 'sintel_stereo':
             new_dataset = SintelStereo(aug_params)*140
