@@ -307,7 +307,7 @@ class KITTI_completion(StereoDataset):
                     self.disparity_list += [disp]
 
         else:
-            for idx, (img1, img2, disp, sparse_hint) in enumerate(
+            for idx, (img1, img2, disp) in enumerate(
                     zip(image1_list, image2_list, disp_list)):
                 self.image_list += [[img1, img2]]
                 self.disparity_list += [disp]
