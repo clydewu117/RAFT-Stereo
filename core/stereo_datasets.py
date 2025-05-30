@@ -277,16 +277,12 @@ class KITTI_completion(StereoDataset):
             disp_list += disp_list_tmp
 
         image1_list, image2_list = [], []
-        sparse_hint_list = []
-
-        velodyne_raw_dir = 'velodyne_raw'
 
         for samp in disp_list:
             sample_name = samp.split('/')[3]
             img_num = samp.split('/')[-1].split('.')[0]
             image1_list.append(os.path.join(root, f'{sample_name[:10]}/{sample_name}/image_02/data/{img_num}.png'))
             image2_list.append(os.path.join(root, f'{sample_name[:10]}/{sample_name}/image_03/data/{img_num}.png'))
-            sparse_hint_list.append(samp.replace('groundtruth', velodyne_raw_dir))
 
         if image_set == 'val':
             state = np.random.get_state()
@@ -294,30 +290,27 @@ class KITTI_completion(StereoDataset):
             val_num = 300
             val_idxs = set(np.random.permutation(len(disp_list))[:val_num])
             np.random.set_state(state)
-            for idx, (img1, img2, disp, sparse_hint) in enumerate(
-                    zip(image1_list, image2_list, disp_list, sparse_hint_list)):
+            for idx, (img1, img2, disp) in enumerate(
+                    zip(image1_list, image2_list, disp_list)):
                 if idx in val_idxs:
                     self.image_list += [[img1, img2]]
                     self.disparity_list += [disp]
-                    self.sparse_hint_list += [sparse_hint]
         elif image_set == 'test':
             state = np.random.get_state()
             np.random.seed(1000)
             val_idxs = set(np.random.permutation(len(disp_list))[:])
             np.random.set_state(state)
-            for idx, (img1, img2, disp, sparse_hint) in enumerate(
-                    zip(image1_list, image2_list, disp_list, sparse_hint_list)):
+            for idx, (img1, img2, disp) in enumerate(
+                    zip(image1_list, image2_list, disp_list)):
                 if idx in val_idxs:
                     self.image_list += [[img1, img2]]
                     self.disparity_list += [disp]
-                    self.sparse_hint_list += [sparse_hint]
 
         else:
             for idx, (img1, img2, disp, sparse_hint) in enumerate(
-                    zip(image1_list, image2_list, disp_list, sparse_hint_list)):
+                    zip(image1_list, image2_list, disp_list)):
                 self.image_list += [[img1, img2]]
                 self.disparity_list += [disp]
-                self.sparse_hint_list += [sparse_hint]
 
 
 class Middlebury(StereoDataset):
