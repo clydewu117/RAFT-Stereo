@@ -256,6 +256,62 @@ class KITTI(StereoDataset):
             self.image_list += [ [img1, img2] ]
             self.disparity_list += [ disp ]
 
+class KITTI_completion(StereoDataset):
+    def __init__(self, aug_params=None, root='datasets/kitti_mono', image_set='training',
+                 args=None):
+        super(KITTI_completion, self).__init__(aug_params, sparse=True, reader=frame_utils.readDispKITTI)
+        assert os.path.exists(root)
+
+        train_seq = sorted(glob(os.path.join(root, 'train/*')))
+        val_seq = sorted(glob(os.path.join(root, 'val/*')))
+
+        split = 'train' if image_set == 'training' else 'val'
+
+        use_seqs = train_seq if image_set == 'training' else val_seq
+        disp_list = []
+        for seq in sorted(use_seqs):
+            seq_name = seq.split('/')[-1]
+            disp_list_tmp = sorted(
+                glob(os.path.join(root, f'{split}/{seq_name}/*/groundtruth/image_02/*.png')))  # gt
+            disp_list += disp_list_tmp
+
+        image1_list, image2_list = [], []
+        sparse_hint_list = []
+
+        for samp in disp_list:
+            sample_name = samp.split('/')[3]
+            img_num = samp.split('/')[-1].split('.')[0]
+            image1_list.append(os.path.join(root, f'{sample_name[:10]}/{sample_name}/image_02/data/{img_num}.png'))
+            image2_list.append(os.path.join(root, f'{sample_name[:10]}/{sample_name}/image_03/data/{img_num}.png'))
+
+        if image_set == 'val':
+            state = np.random.get_state()
+            np.random.seed(1000)
+            val_num = 300
+            val_idxs = set(np.random.permutation(len(disp_list))[:val_num])
+            np.random.set_state(state)
+            for idx, (img1, img2, disp, sparse_hint) in enumerate(
+                    zip(image1_list, image2_list, disp_list, sparse_hint_list)):
+                if idx in val_idxs:
+                    self.image_list += [[img1, img2]]
+                    self.disparity_list += [disp]
+
+        elif image_set == 'test':
+            state = np.random.get_state()
+            np.random.seed(1000)
+            val_idxs = set(np.random.permutation(len(disp_list))[:])
+            np.random.set_state(state)
+            for idx, (img1, img2, disp, sparse_hint) in enumerate(
+                    zip(image1_list, image2_list, disp_list, sparse_hint_list)):
+                if idx in val_idxs:
+                    self.image_list += [[img1, img2]]
+                    self.disparity_list += [disp]
+
+        else:
+            for idx, (img1, img2, disp, sparse_hint) in enumerate(
+                    zip(image1_list, image2_list, disp_list, sparse_hint_list)):
+                self.image_list += [[img1, img2]]
+                self.disparity_list += [disp]
 
 class Middlebury(StereoDataset):
     def __init__(self, aug_params=None, root='datasets/Middlebury', split='F'):
@@ -335,8 +391,11 @@ def fetch_dataloader(args):
             final_dataset = SceneFlowDatasets(aug_params, dstype='frames_finalpass')
             new_dataset = (clean_dataset*4) + (final_dataset*4)
             logging.info(f"Adding {len(new_dataset)} samples from SceneFlow")
-        elif 'kitti' in dataset_name:
+        elif dataset_name == 'kitti':
             new_dataset = KITTI(aug_params, split=dataset_name)
+            logging.info(f"Adding {len(new_dataset)} samples from KITTI")
+        elif dataset_name == 'kitti_mono':
+            new_dataset = KITTI_completion(aug_params, split=dataset_name)
             logging.info(f"Adding {len(new_dataset)} samples from KITTI")
         elif dataset_name == 'sintel_stereo':
             new_dataset = SintelStereo(aug_params)*140
